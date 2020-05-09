@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Page Title</title>
+        <script language="javascript" src="esprima/esprima.js"></script>
+        <script language="javascript" src="source-map/source-map.min.js"></script>
+        <script language="javascript" src="escodegen/escodegen.browser.js"></script>
+		<script language="javascript" src="tools.js"></script>
+		
+		<script language="javascript" src="p5.js"></script>
+        <!-- uncomment lines below to include extra p5 libraries -->
+        <script language="javascript" src="addons/p5.dom.js"></script>
+        <script language="javascript" src="addons/p5.sound.js"></script>
+        <!--<script language="javascript" src="sketch.js" crossorigin></script>-->
+        
+		
+        <script language="javascript">
+			/*globals not defined hack
+		function setup(){
+		}
+		*/
+			
+		var c_stuff_my_parent;
+		var c_stuff_console = console;
+		var console = {};
+		console.log = function(message, passon){
+		//	if(passon) {
+			c_stuff_console.log(message);
+			if (c_stuff_my_parent) {
+				c_stuff_my_parent.postMessage({type: "msg", message: message}, '/');
+			}
+		};
+			
+		window.console = console;
+		
+		window.onerror = function(error, url, lineNumber){
+			c_stuff_console.log("Error Manager: "+error+" url "+url);
+			if (jsText && jsText==url) {
+				while (document.body.firstChild) {
+					document.body.removeChild(document.body.firstChild);
+				}
+				document.body.innerHTML = "";
+		
+				if (error != "Error: Infinite Loop" && srcMap) {
+					lineNumber = srcMap.originalPositionFor({ line: lineNumber, column: 3, bias: sourceMap.SourceMapConsumer.LEAST_UPPER_BOUND});
+					c_stuff_console.log(lineNumber);
+					lineNumber = lineNumber.line;
+				}
+			
+				if (c_stuff_my_parent) {
+					c_stuff_my_parent.postMessage({type: "error", error: "Line "+lineNumber +"  " + error}, '/');
+				}
+			
+				var err = document.createElement('div');
+				//err.innerHTML = error +" at line "+lineNumber +": "+error.message;
+				err.innerHTML = "Line "+lineNumber +"  " + error;
+				document.body.appendChild(err);
+		
+				c_stuff_console.log("Line "+lineNumber +"  " + error);	
+				//return false;
+			} else if (url=="passMe") {
+				if (c_stuff_my_parent) {
+					c_stuff_my_parent.postMessage({type: "error", error: error}, '/');
+				}
+				c_stuff_console.log(error);	
+			}
+		
+		};
+	
+		if (!Date.now) {
+			Date.now = function now() {
+			return new Date().getTime();
+			};
+		}
+		
+		//var date = new Date();
+		var looptime = [];
+		function checkLoop(linenum){
+			if (!looptime[linenum]) {
+				looptime[linenum] = Date.now();
+				//console.log("starting loop "+linenum+"!");
+			}else{
+				if (Date.now()-3000 > looptime[linenum]) {
+					//alert("Possible Infinite Loop at Line "+linenum+"!");
+					//console.log("Bailing!");
+					looptime = [];
+					throw new Error("Infinite Loop", jsText, linenum);
+				}
+			}
+		}
+	
+		function clearLoop(linenum){
+			looptime[linenum]= null;
+		}
+	
+/*	
+	var p5ref = document.createElement('script');
+	p5ref.setAttribute("type","text/javascript");
+	p5ref.setAttribute("src", "p5.js");
+	
+	var fileref=document.createElement('script');
+	fileref
+	window.addEventListener('load', function(e){ document.body.appendChild(fileref);  });
+	*/
+
+	
+		var LOOP = 2;
+		var REMOVE = 1;
+		var NORMAL = 0;
+	
+	
+//	console.log(JSON.stringify(loopCheckTree));
+//	console.log(JSON.stringify(afterLoopTree));
+	
+		var jsText = null;
+		var srcMap = null;
+	
+		function traverse(node, func) {
+			var nodecode = func(node);//1
+			for (var key in node) { //2
+				if (node.hasOwnProperty(key)) { //3
+					var child = node[key];
+					if (typeof child === 'object' && child !== null) { //4
+		
+						if (Array.isArray(child)) {
+							//var count = 1;
+							child.forEach(function(node, index, ray) { //5
+								var t = traverse(node, func);
+								if( t === LOOP){
+									var linenum = node.loc.start.line;
+									var basetree = esprima.parse('clearLoop('+linenum+')', {loc: true});
+									var afterLoopTree = basetree.body;
+									ray.splice(index+1, 0, afterLoopTree[0]);
+								}else if (t===REMOVE) {
+									ray.splice(index, 1);
+								}
+								//count++;
+							});
+							
+						} else {
+							if(traverse(child, func)){
+								//node.body.push(afterLoopTree);
+								//TODO some sort of message about an empty loop
+							}
+						}
+					}
+				}
+			}
+			return nodecode;
+		
+		}
+	
+		function handleLoop(node, func){
+		
+			if (node.body) {
+				var linenum = node.loc.start.line;
+				var basetree = esprima.parse('checkLoop('+linenum+')', {loc: true});
+				var loopCheckTree = basetree.body;
+				node.body.unshift(loopCheckTree[0]);
+			}
+			//TODO some sort of message about an empty loop
+			
+		}
+	
+		function checkForObj(node){
+			//somehow we need to remove window, document, etc here
+			if (node.expression.type ==="CallExpression") {
+			//	console.log("Call Exper: "+node.expression.callee);
+				if (node.expression.callee.type ==="MemberExpression") {
+					if (node.expression.callee.object.name === "window" || node.expression.callee.object.name === "navigator") {
+						return true;
+					}
+				}
+			} else if (node.expression.type ==="AssignmentExpression") {
+				//console.log("Assignment Exper: "+node.expression.left+" : "+node.expression.operator+" : "+node.expression.right);
+				if (node.expression.left.type === "MemberExpression") {
+					if (node.expression.left.object.name ==="window" || node.expression.left.object.name === "navigator") {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+	
+	
+	
+		
+		window.addEventListener('message', function(e){
+			if (!checkDomain(e.origin)) {
+				return;
+			}
+			
+			c_stuff_my_parent = e.source;
+			
+			if (e.data.type == "run") {
+				runCode(e.data);
+			}else if (e.data.type == "stop") {
+				//document.getElementById("p5script").src = null;				
+				throw new Error("stopping");
+			}
+			
+		});
+			
+			
+		function runCode(e){	
+			//while (document.body.firstChild) {
+			//	document.body.removeChild(document.body.firstChild);
+			//}
+			document.body.innerHTML = "";
+			
+			var reader = new FileReader();
+	
+			reader.onload = function(ex) {
+				var text = reader.result;
+				
+				try{
+					var ast = esprima.parse(text, {loc: true, source: e.data, tolerant:true});
+				}catch(thrown_error){
+					throw new Error(thrown_error.message, "passMe");
+				}
+				function adjustRegexLiteral(key, value) {
+					if (key === 'value' && value instanceof RegExp) {
+						value = value.toString();
+					}
+				return value;
+				}
+			
+			//console.log(JSON.stringify(ast, adjustRegexLiteral, 4));
+			//console.log("*****************");
+				
+				traverse(ast, function(node) {
+					//console.log(node.type);
+					if (node.type === "WhileStatement" || node.type === "ForStatement") {
+						handleLoop(node.body, null);
+						return LOOP;
+					}else if (node.type === "ExpressionStatement") {
+						if(checkForObj(node)){
+							return REMOVE;
+						}
+					}
+					return NORMAL;
+				});
+				
+				
+			//	console.log(JSON.stringify(ast, adjustRegexLiteral, 4));
+				
+				
+				//this sectoin is for printing out code formatted for the screen,
+				//get rid of it for final
+				/*
+				var newcode  = escodegen.generate(ast,
+					{format: {
+						newline: '\n'
+					}
+					}
+					);
+				
+				var t = document.createElement('div');
+				//t.innerHTML = JSON.stringify(ast, adjustRegexLiteral, 4);
+				console.log(newcode);
+				t.innerHTML = newcode;
+				document.body.appendChild(t);
+			//	console.log("cheese");
+			*/
+			
+			//console.log("Data "+e.data);
+			
+				var newcode2 = window.escodegen.generate(ast,
+							{sourceMap: true,
+							sourceMapWithCode: true,
+							sourceContent: text
+							});
+				
+				//console.log(newcode2.code);
+				//console.log(newcode2.map.toString());
+				
+				var data = new Blob([newcode2.code], {type: 'text/javascript'});
+				
+				srcMap = new sourceMap.SourceMapConsumer(newcode2.map.toString());
+	
+				// If we are replacing a previously generated file we need to
+				// manually revoke the object URL to avoid memory leaks.
+				if (jsText !== null) {
+					window.URL.revokeObjectURL(jsText);
+				}
+	
+				jsText = window.URL.createObjectURL(data);
+		
+				var fileref=document.createElement('script');
+				fileref.setAttribute("type","text/javascript");
+				fileref.setAttribute("src", jsText);
+				fileref.setAttribute("id", "p5script");
+				fileref.setAttribute("defer", true);
+				document.body.appendChild(fileref);		
+			};
+			
+			//this reads the code file that was sent
+			var xhr = new XMLHttpRequest();
+			xhr.open('GET', e.data, true);
+			xhr.responseType = 'blob';
+			xhr.onload = function(e) {
+				if (this.status == 200) {
+						var myBlob = this.response;
+					reader.readAsText(myBlob);
+				}
+			};
+			xhr.send();
+		}
+  </script>
+        <!-- this line removes any default padding and style. you might only need one of these values set. -->
+        <style> body {padding: 0; margin: 0; background-color: white;border: none;} </style>
+    </head>
+    <body></body>
+</html>

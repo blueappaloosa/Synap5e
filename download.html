@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Page Title</title>
+    <link rel="stylesheet" href="editorstyle.css">
+</head>
+
+<body class="download">
+<div class="outer_wrapper">
+	<div class="inner_wrapper" id="inner_wrapper">
+	<div class="assets_wrapper" id="assets_wrapper" >
+		<div class="download_div"><div><h2>Download Project as .zip</h2></div>
+            <div class="download_form"><label for="filename_input">Filename</label> <input tabindex="-1" type="text" id="filename_input" value="p5_project.zip"></div>
+            <button id="downloadButtonShell" type="button" tabindex="0" onclick="downLoadFile();">Download</button> <a tabindex="-1" id="downloadButton" href="#"></a>
+        </div>
+        
+        <div class="upload_div"><div><h2>Upload zipped Project</h2></div>
+        <div class="download_form"> <label for="file">Select File</label> <input tabindex="-1" id="file" type="file"/></div>
+        </div>
+    </div>
+	</div>
+    </div>
+	</div>
+	</div>
+<script language="javascript" src="jszip/jszip.js"></script>
+<script language="javascript" src="jszip/jszip-utils.js"></script>
+<script language="javascript" src="tools.js"></script>
+	<script type="text/javascript">
+        
+        var my_parent = null;
+        
+        window.addEventListener('message', function(e){
+			if (!checkDomain(e.origin)) {
+				return;
+			}
+            
+            my_parent = e.source;
+				
+			if(e.data.type === "resize"){
+				document.body.style.height = e.data.horiz+"px";
+				document.getElementById('assets_wrapper').style.height = e.data.horiz+"px";
+				document.body.style.width = e.data.vert+"px";
+				document.getElementById('assets_wrapper').style.width = e.data.vert+"px";
+			//	document.getElementById('error_wrapper').style.width = Math.round(window.innerWidth * (1-e.data.vert))-2+"px";
+			} else if (e.data.type == "sendZip") {
+                if (zip) {
+                   zip.file("sketch.js", e.data.sketch); //code
+                   if (e.data.assets.length > 0) {
+                   e.data.assets.forEach(function (elem, index, array){
+                        d_count++;
+                        JSZipUtils.getBinaryContent(elem.url, function (err, data) {
+                            if(err) {
+                                 console.log(err);
+                                throw err; // or handle the error
+                            }
+                            //  console.log(data);
+                            zip.file(elem.filename, data, {binary:true});
+                            d_count--;
+                            checkFinish();
+                            });
+                   });
+                   }
+                 //  console.log('yay!');
+                   d_count--;
+                   checkFinish();
+                }
+            }else if (e.data.type == "active") {
+				document.getElementById("filename_input").tabIndex = "0";
+				document.getElementById("downloadButtonShell").tabIndex = "0";
+				document.getElementById("file").tabIndex = "0";
+				document.getElementById("filename_input").focus();
+				//console.log("activate load");
+			}else if (e.data.type == "inactive") {
+				document.getElementById("filename_input").tabIndex = "-1";
+				document.getElementById("downloadButtonShell").tabIndex = "-1";
+				document.getElementById("file").tabIndex = "-1";
+				//console.log("deactivate load");
+			}
+        });
+        
+        var d_count = 0;
+        var zip = null;
+        
+        function downLoadFile(){
+            d_count = 0;
+        //    console.log("download!");
+            zip = new JSZip();
+            
+            d_count++;
+            my_parent.postMessage({type: "zipData"}, '/');
+            
+            d_count++;
+            JSZipUtils.getBinaryContent("p5.js", function (err, data) {
+                if(err) {
+                  //  console.log(err);
+                    throw err; // or handle the error
+                }
+              //  console.log(data);
+                zip.file("p5.js", data, {binary:true});
+                d_count--;
+                checkFinish();
+            });
+            
+            d_count++;
+            JSZipUtils.getBinaryContent("addons/p5.sound.js", function (err, data) {
+                if(err) {
+                   // console.log(err);
+                    throw err; // or handle the error
+                }
+                zip.file("addons/p5.sound.js", data, {binary:true});
+                d_count--;
+                checkFinish();
+            });
+			
+			d_count++;
+            JSZipUtils.getBinaryContent("addons/p5.dom.js", function (err, data) {
+                if(err) {
+                   // console.log(err);
+                    throw err; // or handle the error
+                }
+                zip.file("addons/p5.dom.js", data, {binary:true});
+                d_count--;
+                checkFinish();
+            });
+            
+            d_count++;
+            JSZipUtils.getBinaryContent("ind.txt", function (err, data) {
+                if(err) {
+                //    console.log(err);
+                    throw err; // or handle the error
+                }
+                zip.file("index.html", data, {binary:true});
+                d_count--;
+                checkFinish();
+            });
+            
+            
+        }
+        
+        function checkFinish(){
+            console.log(d_count);
+            if (d_count == 0) {
+               // zip.file("cheese.html", "hello!");
+            
+            var content = zip.generate({type:"blob"});
+            
+            var url = window.URL.createObjectURL(content);
+            var link = document.getElementById("downloadButton"); //I suppose you'll have a link with this id :)
+            
+            var downname = document.getElementById("filename_input").value;
+            if (!downname) {
+                downname = "p5project.zip";
+            }
+            
+            if (downname.indexOf(".zip")==-1) {
+                downname+=".zip";
+            }
+            
+            link.download = downname;
+            link.href = url;
+            link.dispatchEvent(new MouseEvent('click', {
+                                'view': window,
+                                'bubbles': true,
+                                'cancelable': true
+                                }));
+            }
+        }
+        
+        function uploadFile(e){
+            if (!(e.target.files[0].type == "application/zip" || e.target.files[0].type == "application/octet-stream" || e.target.files[0].type == "application/x-zip-compressed") ) {
+                console.log(e.target.files[0].type);
+				alert("You may only upload .zip files");
+            }else{
+                
+                var reader = new FileReader();
+                
+                
+                
+                reader.onload = function(re){
+                    var loadedFile = new JSZip(re.target.result);
+                    var sketch_loaded = false;
+                    var uploadAssets = [];
+					
+                    for(var filename in loadedFile.files){
+                        var theFile = loadedFile.files[filename];
+                        my_parent.postMessage({type:"clearAssets"}, '/');
+                        
+                        if (filename == "sketch.js") {
+                            if (my_parent) {
+                                my_parent.postMessage({type:"loadFile", sketch: theFile.asText()}, '/');
+                            }
+                            sketch_loaded = true;
+                        }else if (filename.indexOf("assets/") == 0) {
+                           if (my_parent) {
+                                var asset = new Blob([theFile.asArrayBuffer()]);
+                                var url = window.URL.createObjectURL(asset);
+								uploadAssets.push({filename: filename, url: url});
+                                //my_parent.postMessage({type:"loadAsset", filename:filename, url: url}, '/');
+                            }
+                        }
+                    }
+
+                    if (!sketch_loaded) {
+                        alert("Zip file did not contain a sketch.");
+                    }else{
+						if (uploadAssets.length) {
+							my_parent.postMessage({type:"loadAsset", list: uploadAssets}, '/');
+						}
+					}
+                };
+                
+                
+                reader.readAsArrayBuffer(e.target.files[0]);
+                e.target.value = "";
+            }
+        }
+        
+        document.getElementById('file').addEventListener('change', uploadFile, false);
+    </script>
+</body>
+</html>

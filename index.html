@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html manifest="synap5e.appcache">
+    <head>
+        <title>synaP5e</title>
+        <link rel="stylesheet" href="codemirror/lib/codemirror.css">
+            <link rel="stylesheet" href="codemirror/addon/lint/lint.css">
+                <link rel="stylesheet" href="codemirror/theme/midnight.css">
+                    <link rel="stylesheet" href="editorstyle.css">
+                        <script src="codemirror/lib/codemirror.js"></script>
+                        <script src="codemirror/mode/javascript/javascript.js"></script>
+                        <script src="jshint/jshint.js"></script>
+                        <script src="codemirror/addon/lint/lint.js"></script>
+                        <script src="codemirror/addon/lint/javascript-lint.js"></script>
+                        <script src="codemirror/addon/edit/matchbrackets.js"></script>
+                        <!--<script src="codemirror/addon/search/searchcursor.js"></script>-->
+                        <script src="codemirror/addon/search/match-highlighter.js"></script>
+                        <script src="codemirror/addon/selection/active-line.js"></script>
+                        <script src="codemirror/addon/mode/overlay.js"></script>
+                        <script language="javascript" src="tools.js"></script>
+                    </head>
+                    <body onload="setupEditor();" style="overflow: hidden;">
+                        <div id="main_div" class="main_div">
+                            <iframe id="p5_canvas" class="p5_canvas" src="canvasframe.html" sandbox="allow-scripts allow-same-origin" ></iframe>
+                            <div id="code_frame" class="code_frame">
+                                <div id="buttons" class="buttons" >
+                                    
+                                    <div class="left">
+                                        <div tabindex="0" id="runcode" class="runcode" onkeypress="checkKey(event, makeTextFile);" onclick="makeTextFile();">Run</div>
+                                        <div tabindex="0" id="stopcode" class="stopcode" onkeypress="checkKey(event, stopCode);" onclick="stopCode();">Stop</div>
+                                        <div id="screen_reader" class="options"><input id="textboxmode" tabindex="0" type="checkbox" name="accessible" value="textonly" onchange="toggleAccessibility(this);" /><label for="accessible">Plain Text</label></div>
+                                    </div>
+                                    
+                                    <div class="right">
+                                        <div tabindex="0" id="console_tab" class="active_tab" onkeypress="checkKey(event, consoleClick);" onclick="consoleClick();">P5 Console</div>
+                                        <div tabindex="0" id="asset_tab" class="inactive_tab" onkeypress="checkKey(event, assetsClick);" onclick="assetsClick();">Assets</div>
+                                        <div tabindex="0" id="load_tab" class="inactive_tab" onkeypress="checkKey(event, loadClick);" onclick="loadClick();">Save/Load</div>
+                                    </div>
+                                    <div id="middle_drag" class="middle_drag" onmousedown="dragVert();" onmouseup="stopDragVert();"></div>
+                                </div>
+<textarea id="code" class="code" tabindex="0">
+function setup() {
+// put setup code here
+}
+
+function draw() {
+// put drawing code here
+  ellipse(50, 50, 80, 80);
+}</textarea>
+                            </div>
+                            <div id="middle_bar" class="middle" onmousedown="dragHoriz();" onmouseup="stopDragHoriz();"></div>
+                            <div id="console_div" class="console_div">
+                                <iframe id="console_frame" class="console_frame" src="console.html" sandbox="allow-scripts allow-same-origin" ></iframe>
+                                <iframe id="asset_frame" class="asset_frame" src="assets.html" sandbox="allow-scripts allow-same-origin" ></iframe>
+                                <iframe id="load_frame" class="load_frame" src="download.html" ></iframe>
+                            </div>
+                        </div>
+                        <script src="maineditor.js"></script>
+                    </body>
+                </html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>Page Title</title>
+	<link rel="stylesheet" href="editorstyle.css">
+</head>
+<body class="assets">
+	<div class="outer_wrapper">
+		<div class="inner_wrapper" id="inner_wrapper">
+	<div class="assets_wrapper" id="assets_wrapper" >
+		<div class="asset_line"><label for="files">Upload Assets</label> <input type="file" tabindex="-1" id="files" name="files[]" multiple /></div>
+		<div class="asset_div" id="asset_div">
+
+		</div>
+		</div>
+	</div>
+	</div>
+	<script language="javascript" src="tools.js"></script>
+	<script type="text/javascript">
+		var name_pairs = []; //matches up file name to blob url
+		var asset_div = document.getElementById("asset_div");
+		
+		window.addEventListener('message', function(e){
+			if (!checkDomain(e.origin)) {
+				return;
+			}
+				
+			if(e.data.type === "resize"){
+				document.body.style.height = e.data.horiz+"px";
+				document.getElementById('assets_wrapper').style.height = e.data.horiz+"px";
+				document.body.style.width = e.data.vert+"px";
+				document.getElementById('assets_wrapper').style.width = e.data.vert+"px";
+			//	document.getElementById('error_wrapper').style.width = Math.round(window.innerWidth * (1-e.data.vert))-2+"px";
+			}else if (e.data.type == "getList") {
+				e.source.postMessage({type: "assetList", list: name_pairs}, '/');
+			}else if (e.data.type == "getList2") {
+				e.source.postMessage({type: "assetList2", list: name_pairs}, '/');
+			}else if (e.data.type == "clearAll") {
+				while (name_pairs.length) {
+					name_pairs.pop();
+				}
+				generateAssetList();
+			}else if (e.data.type == "addAsset") {				
+				e.data.files.forEach(function(element, index, array){
+						name_pairs.push(element);
+				});
+				generateAssetList();
+				
+			}else if (e.data.type == "active") {
+				var l = document.getElementsByClassName("delete_me");
+					for(var i=0; i<l.length; i++ ){
+						l[i].tabIndex = "0";
+					}
+					document.getElementById("files").tabIndex = "0";
+					document.getElementById("files").focus();
+					//console.log("activate assets");
+					//console.log(document.activeElement);
+			}else if (e.data.type == "inactive") {
+				var l2 = document.getElementsByClassName("delete_me");
+					for(var j=0; j<l2.length; j++ ){
+						l2[j].tabIndex = "-1";
+				}
+				document.getElementById("files").tabIndex = "-1";
+				
+				//console.log("deactivate assets");
+				
+			}
+		});
+		
+		
+		function addAssets(e){
+			var files = e.target.files;
+			var err = "";
+			
+			for (var i = 0; i < files.length; i++) {
+				//var data = new Blob([code], {type: 'text/javascript'});
+				//console.log(files[i].type);
+				//alert("hi"+(files[i].name.substr(files[i].name.lastIndexOf('.')+1)).toLowerCase());
+				if(files[i].type == "image/jpeg" || files[i].type =="image/png" || files[i].type == "image/gif" || (files[i].name.substr(files[i].name.lastIndexOf('.')+1)).toLowerCase() == "ttf" || (files[i].name.substr(files[i].name.lastIndexOf('.')+1)).toLowerCase() == "otf" || files[i].type == "audio/mpeg" || files[i].type == "audio/ogg" || files[i].type == "audio/mp3"){
+					var propName = "assets/"+files[i].name;
+					var num = 1;
+					name_pairs.forEach(function (elem, index, array){
+						if (elem.filename == propName) {
+							var dot = files[i].name.lastIndexOf('.');
+							propName = "assets/"+files[i].name.substr(0,dot)+"("+num+")"+files[i].name.substr(dot);
+							num = num+1;
+						}
+					});
+					name_pairs.push({filename: propName, url: window.URL.createObjectURL(files[i])});
+				}else{
+					err+=files[i].name+"\nType:   "+files[i].type+"\n  ";
+				}
+			}
+			if (err!=="") {
+				alert("Error uploading file(s):\n"+files[0].type+"\n"+err+"\nYou may only upload files of certain formats.\nImages: .jpg .jpeg .gif .png\nAudio: .mp3 .ogg\nFonts: .ttf .otf");
+			}
+		
+			name_pairs.sort(function(a, b){
+				var first = a.filename.replace(/\(/g, "");
+				var second = b.filename.replace(/\(/g, "");
+				if (first > second) {
+					return 1;
+				}
+				if (first < second) {
+					return -1;
+				}
+				// a must be equal to b
+				return 0;
+				});
+			
+			e.target.value = "";
+			generateAssetList();
+		}
+		
+		function deleteMe(elem){
+		//	console.log("delete!");
+		//	console.log(elem);
+		//var i = name_pairs.indexOf(elem.parentElement.firstChild.nodeValue);
+			name_pairs.forEach(function(element, index, array){
+				if (element.url == elem) {
+					window.URL.revokeObjectURL(element.url);
+					name_pairs.splice(index,1);	
+				}
+			});
+			
+			generateAssetList();
+			
+		}
+		
+		function generateAssetList(){
+			asset_div.innerHTML = "";
+			
+			name_pairs.forEach(function(elem, index, array){
+				var a = document.createElement("div");
+				a.className = "asset_line";
+				a.innerHTML = elem.filename+"<div tabindex=\"0\" title=\"Delete "+elem.filename+"\" class=\"delete_me\" onkeypress=\"checkKey(event, function(){deleteMe(\'"+elem.url+"\');})\" onclick=\"deleteMe(\'"+elem.url+"\');\" >X</div>";
+				asset_div.appendChild(a);
+			});
+		}
+		
+		document.getElementById('files').addEventListener('change', addAssets, false);
+		</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Page Title</title>
+        <link rel="stylesheet" href="editorstyle.css">
+        </head>
+        <body class="console">
+            <div class="console_wrapper">
+                <!-- <div class="console_title">P5 Console</div> -->
+                <div class="error_wrapper" id="error_wrapper">
+                    <div class="errors" id="errors"></div>
+                </div>
+            </div>
+			<script language="javascript" src="tools.js"></script>
+            <script language="javascript">
+			//var c_stuff_my_parent;
+			var error_div = document.getElementById('errors');
+			var count = 1;
+			window.addEventListener('message', function(e){
+				if (!checkDomain(e.origin)) {
+					return;
+				}
+				
+				if (e.data.type === 'clear') {
+				 //   while (error_div.firstChild) {
+				//	error_div.removeChild(document.body.firstChild);
+				//}
+				error_div.innerHTML = "";
+				count = 1;
+
+				}else if(e.data.type === "resize"){
+					document.body.style.height = e.data.horiz+"px";
+					document.getElementById('error_wrapper').style.height = e.data.horiz+"px";
+					document.body.style.width = e.data.vert+"px";
+					document.getElementById('error_wrapper').style.width = e.data.vert+"px";
+				}else if(e.data.type === "rescroll"){
+					error_div.scrollTop = error_div.scrollHeight;
+				} else {
+					var d = document.createElement('div');
+					//d.className = "console_line";
+
+					if(e.data.type == "error"){
+						d.className = "console_line console_error";
+						d.innerHTML = count++ +": "+ e.data.error;
+
+					}else if (e.data.type == "msg") {
+						d.innerHTML = count++ +": "+e.data.message;
+						d.className = "console_line console_message";
+					}else if (e.data.type == "active") {
+						//code
+					}else if (e.data.type == "inactive") {
+						//code
+					}
+
+					error_div.appendChild(d);
+					error_div.scrollTop = error_div.scrollHeight;
+				}
+			});
+		</script>
+        </body>
+    </html>
